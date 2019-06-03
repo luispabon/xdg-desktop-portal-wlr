@@ -1,0 +1,18 @@
+Source: xdg-desktop-portal-wlr
+Section: admin
+Priority: optional
+Maintainer: Aleksey Samoilov <samoilov.lex@gmail.com>
+Build-Depends: debhelper (>= 9),
+                              meson,
+                              pkg-config,
+                              cmake,
+                              libsystemd-dev,
+                              libwayland-dev,
+                              wayland-protocols
+Standards-Version: 3.9.8
+Homepage: https://github.com/emersion/xdg-desktop-portal-wlr
+
+Package: xdg-desktop-portal-wlr
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, grim
+Description: xdg-desktop-portal backend for wlroots

@@ -1,0 +1,17 @@
+xdg-desktop-portal-wlr (0.0.1-2~disco) disco; urgency=low
+
+  * Fix again
+
+ -- Aleksey Samoilov <samoilov.lex@gmail.com>  Tue, 12 Feb 2019 16:12:25 +0400
+
+xdg-desktop-portal-wlr (0.0.0-2~disco) disco; urgency=low
+
+  * Fix build
+
+ -- Aleksey Samoilov <samoilov.lex@gmail.com>  Tue, 12 Feb 2019 13:34:32 +0400
+
+xdg-desktop-portal-wlr (0.0.0-1~disco) disco; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Aleksey Samoilov <samoilov.lex@gmail.com>  Tue, 12 Feb 2019 13:01:45 +0400
