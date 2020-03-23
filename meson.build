@@ -3,7 +3,7 @@ project(
 	'c',
 	version: '0.0.0',
 	license: 'MIT',
-	meson_version: '>=0.43.0',
+	meson_version: '>=0.46.0',
 	default_options: [
 		'c_std=c11',
 		'warning_level=2',
@@ -11,29 +11,55 @@ project(
 	],
 )
 
-add_project_arguments('-Wno-unused-parameter', language: 'c')
+cc = meson.get_compiler('c')
 
-xdpw_inc = include_directories('include')
+add_project_arguments(cc.get_supported_arguments([
+	'-Wno-type-limits',
+	'-Wno-missing-braces',
+	'-Wno-missing-field-initializers',
+	'-Wno-unused-parameter',
+]), language: 'c')
 
+inc = include_directories('include')
+
+rt = cc.find_library('rt')
+pipewire = dependency('libpipewire-0.3', version: '>= 0.2.9')
 wayland_client = dependency('wayland-client')
 wayland_protos = dependency('wayland-protocols', version: '>=1.14')
-systemd = dependency('libsystemd')
+drm = dependency('libdrm').partial_dependency(includes: true)
 
-# subdir('protocol')
+logind = dependency('libsystemd', required: false)
+if logind.found()
+	add_project_arguments('-DHAVE_SYSTEMD=1', language: 'c')
+else
+	logind = dependency('libelogind')
+	add_project_arguments('-DHAVE_ELOGIND=1', language: 'c')
+endif
+
+subdir('protocols')
 
 executable(
 	'xdg-desktop-portal-wlr',
 	files([
-		'main.c',
-		'request.c',
-		'session.c',
-		'screenshot.c',
+		'src/core/main.c',
+		'src/core/logger.c',
+		'src/core/request.c',
+		'src/core/session.c',
+		'src/screenshot/screenshot.c',
+		'src/screencast/screencast.c',
+		'src/screencast/screencast_common.c',
+		'src/screencast/wlr_screencast.c',
+		'src/screencast/pipewire_screencast.c',
 	]),
 	dependencies: [
 		wayland_client,
-		systemd,
+		wlr_protos,
+		logind,
+		pipewire,
+		rt,
+		drm
 	],
-	include_directories: [xdpw_inc],
+	include_directories: [inc],
 	install: true,
 )
 

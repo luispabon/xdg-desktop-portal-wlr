@@ -8,9 +8,25 @@ static const char interface_name[] = "org.freedesktop.impl.portal.Request";
 
 static int method_close(sd_bus_message *msg, void *data,
 		sd_bus_error *ret_error) {
+	
+	int ret = 0; 
 	// struct xdpw_request *req = data;
 	// TODO
-	printf("Request.Close\n");
+	logprint(INFO, "dbus: request closed");
+
+	sd_bus_message *reply = NULL;
+	ret = sd_bus_message_new_method_return(msg, &reply);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = sd_bus_send(NULL, reply, NULL);
+	if (ret < 0) {
+		return ret;
+	}
+
+	sd_bus_message_unref(reply);	
+
 	return 0;
 }
 
@@ -26,7 +42,7 @@ struct xdpw_request *request_create(sd_bus *bus, const char *object_path) {
 	if (sd_bus_add_object_vtable(bus, &req->slot, object_path, interface_name,
 			request_vtable, NULL) < 0) {
 		free(req);
-		fprintf(stderr, "sd_bus_add_object_vtable failed: %s\n",
+		logprint(ERROR, "dbus: sd_bus_add_object_vtable failed: %s",
 			strerror(-errno));
 		return NULL;
 	}
