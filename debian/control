@@ -8,6 +8,7 @@ Build-Depends: debhelper (>= 9),
                               cmake,
                               libsystemd-dev,
                               libwayland-dev,
+                              libpipewire-0.3-dev,
                               wayland-protocols
 Standards-Version: 3.9.8
 Homepage: https://github.com/emersion/xdg-desktop-portal-wlr
