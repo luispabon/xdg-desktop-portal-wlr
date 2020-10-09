@@ -1,0 +1,3 @@
+shlibs:Depends=libc6 (>= 2.17), libpipewire-0.3-0 (>= 0.3.1), libsystemd0 (>= 243), libwayland-client0 (>= 1.9.91)
+misc:Depends=
+misc:Pre-Depends=
