@@ -1,18 +1,20 @@
 #include "screencast_common.h"
+#include <assert.h>
 
-enum spa_video_format pipewire_from_wl_shm(void *data) {
-	struct screencast_context *ctx = data;
-
-	if (ctx->forced_pixelformat) {
-		if (strcmp(ctx->forced_pixelformat, "BGRx") == 0) {
-			return SPA_VIDEO_FORMAT_BGRx;
-		}
-		if (strcmp(ctx->forced_pixelformat, "RGBx") == 0) {
-			return SPA_VIDEO_FORMAT_RGBx;
-		}
+void randname(char *buf) {
+	struct timespec ts;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	long r = ts.tv_nsec;
+	for (int i = 0; i < 6; ++i) {
+		assert(buf[i] == 'X');
+		buf[i] = 'A'+(r&15)+(r&16)*2;
+		r >>= 5;
 	}
+}
 
-	switch (ctx->simple_frame.format) {
+enum spa_video_format xdpw_format_pw_from_wl_shm(
+		struct xdpw_screencast_instance *cast) {
+	switch (cast->simple_frame.format) {
 	case WL_SHM_FORMAT_ARGB8888:
 		return SPA_VIDEO_FORMAT_BGRA;
 	case WL_SHM_FORMAT_XRGB8888:
@@ -33,5 +35,20 @@ enum spa_video_format pipewire_from_wl_shm(void *data) {
 		return SPA_VIDEO_FORMAT_NV12;
 	default:
 		abort();
+	}
+}
+
+enum spa_video_format xdpw_format_pw_strip_alpha(enum spa_video_format format) {
+	switch (format) {
+	case SPA_VIDEO_FORMAT_BGRA:
+		return SPA_VIDEO_FORMAT_BGRx;
+	case SPA_VIDEO_FORMAT_ABGR:
+		return SPA_VIDEO_FORMAT_xBGR;
+	case SPA_VIDEO_FORMAT_RGBA:
+		return SPA_VIDEO_FORMAT_RGBx;
+	case SPA_VIDEO_FORMAT_ARGB:
+		return SPA_VIDEO_FORMAT_xRGB;
+	default:
+		return SPA_VIDEO_FORMAT_UNKNOWN;
 	}
 }

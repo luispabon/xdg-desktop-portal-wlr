@@ -3,10 +3,10 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <poll.h>
-#include <sys/types.h>
 #include <pipewire/pipewire.h>
 #include <spa/utils/result.h>
 #include "xdpw.h"
+#include "logger.h"
 
 enum event_loop_fd {
 	EVENT_LOOP_DBUS,
@@ -16,16 +16,15 @@ enum event_loop_fd {
 
 static const char service_name[] = "org.freedesktop.impl.portal.desktop.wlr";
 
-int xdpw_usage(FILE* stream, int rc) {
+static int xdpw_usage(FILE* stream, int rc) {
 	static const char* usage =
 		"Usage: xdg-desktop-portal-wlr [options]\n"
 		"\n"
 		"    -l, --loglevel=<loglevel>        Select log level (default is ERROR).\n"
 		"                                     QUIET, ERROR, WARN, INFO, DEBUG, TRACE\n"
 		"    -o, --output=<name>              Select output to capture.\n"
-		"    -p,--pixelformat=BGRx|RGBx       Force a pixelformat in pipewire\n"
 		"                                     metadata (performs no conversion).\n"
-		"    -h,--help                        Get help (this text).\n"
+		"    -h, --help                       Get help (this text).\n"
 		"\n";
 
 	fprintf(stream, "%s", usage);
@@ -34,14 +33,12 @@ int xdpw_usage(FILE* stream, int rc) {
 
 int main(int argc, char *argv[]) {
 	const char* output_name = NULL;
-	const char* forced_pixelformat = NULL;
 	enum LOGLEVEL loglevel = ERROR;
 
-	static const char* shortopts = "l:o:p:h";
+	static const char* shortopts = "l:o:h";
 	static const struct option longopts[] = {
 		{ "loglevel", required_argument, NULL, 'l' },
 		{ "output", required_argument, NULL, 'o' },
-		{ "pixelformat", required_argument, NULL, 'p' },
 		{ "help", no_argument, NULL, 'h' },
 		{ NULL, 0, NULL, 0 }
 	};
@@ -58,13 +55,10 @@ int main(int argc, char *argv[]) {
 		case 'o':
 			output_name = optarg;
 			break;
-		case 'p':
-			forced_pixelformat = optarg;
-			break;
 		case 'h':
-			return xdpw_usage(stdout, 0);
+			return xdpw_usage(stdout, EXIT_SUCCESS);
 		default:
-			return xdpw_usage(stderr, 1);
+			return xdpw_usage(stderr, EXIT_FAILURE);
 		}
 	}
 
@@ -76,30 +70,45 @@ int main(int argc, char *argv[]) {
 	ret = sd_bus_open_user(&bus);
 	if (ret < 0) {
 		logprint(ERROR, "dbus: failed to connect to user bus: %s", strerror(-ret));
-		goto error;
+		return EXIT_FAILURE;
 	}
+	logprint(DEBUG, "dbus: connected");
 
 	struct wl_display *wl_display = wl_display_connect(NULL);
 	if (!wl_display) {
 		logprint(ERROR, "wayland: failed to connect to display");
-		goto error;
+		sd_bus_unref(bus);
+		return EXIT_FAILURE;
 	}
+	logprint(DEBUG, "wlroots: wl_display connected");
 
 	pw_init(NULL, NULL);
 	struct pw_loop *pw_loop = pw_loop_new(NULL);
 	if (!pw_loop) {
 		logprint(ERROR, "pipewire: failed to create loop");
-		goto error;
+		wl_display_disconnect(wl_display);
+		sd_bus_unref(bus);
+		return EXIT_FAILURE;
 	}
+	logprint(DEBUG, "pipewire: pw_loop created");
 
 	struct xdpw_state state = {
 		.bus = bus,
 		.wl_display = wl_display,
 		.pw_loop = pw_loop,
+		.screencast_source_types = MONITOR,
+		.screencast_cursor_modes = HIDDEN | EMBEDDED,
+		.screencast_version = XDP_CAST_PROTO_VER,
 	};
 
-	init_screenshot(&state);
-	init_screencast(&state, output_name, forced_pixelformat);
+	wl_list_init(&state.xdpw_sessions);
+
+	xdpw_screenshot_init(&state);
+	ret = xdpw_screencast_init(&state, output_name);
+	if (ret < 0) {
+		logprint(ERROR, "xdpw: failed to initialize screencast");
+		goto error;
+	}
 
 	ret = sd_bus_request_name(bus, service_name, 0);
 	if (ret < 0) {
@@ -174,5 +183,6 @@ error:
 	sd_bus_unref(bus);
 	pw_loop_leave(state.pw_loop);
 	pw_loop_destroy(state.pw_loop);
+	wl_display_disconnect(state.wl_display);
 	return EXIT_FAILURE;
 }
